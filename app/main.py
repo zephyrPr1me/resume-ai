@@ -21,10 +21,23 @@ async def read_root():
 
 client = genai.Client(api_key=getenv("GEMINI_API_KEY"))
 prompt = """
-Review the resume [TEXT] and highlight 3 key points
-Weaknesses in the resume
-Strengths in the resume
-What needs improvement
+Act as a professional recruiter and career coach. Analyze the provided resume text thoroughly. Respond strictly in the following format, using the exact headings in English. Write all analysis in the same language as the resume.
+
+Key Points:
+- Identify three actionable, specific highlights from the resume (e.g., quantifiable achievements, rare skills, unique experience). Explain why each is valuable for employers.
+
+Strengths:
+- List the main strengths of the resume (e.g., strong formatting, relevant keywords, clear career progression, measurable results). Provide concrete examples from the text.
+
+Weaknesses:
+- Identify specific weaknesses (e.g., employment gaps, lack of keywords, vague descriptions, overused buzzwords, missing metrics). Refer to actual sentences or sections.
+
+What needs improvement:
+- Give 3–5 concrete, prioritized suggestions to make the resume more competitive. For each suggestion, explain the problem and how to fix it (e.g., “Add numbers to the project description…”, “Rephrase the summary to include…”).
+
+Be concise, practical, and avoid generic statements. Use bullet points within each section.
+
+Resume:
 [TEXT]
 """
 
