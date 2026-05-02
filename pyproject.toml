@@ -6,7 +6,8 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi[standard]>=0.136.1",
-    "httpx>=0.28.1",
+    "google-genai>=1.74.0",
+    "pymupdf>=1.27.2.3",
 ]
 
 [dependency-groups]
