@@ -1,44 +1,40 @@
+import json
+import logging
 from io import BytesIO
 from os import getenv
-from typing import List
+from typing import List, Optional
 
 import fitz
 from dotenv import load_dotenv
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from google import genai
+from google.genai import types as genai_types
 from pydantic import BaseModel, Field
 
 load_dotenv()
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class AnalysisResult(BaseModel):
-    # Match percentage (0–100)
-    match_percentage: int = Field(
-        ...,
+    match_percentage: Optional[int] = Field(
+        None,
         ge=0,
         le=100,
         description="Percentage of how well the resume matches the job requirements",
     )
-
-    # Summary
     summary: str = Field(
         ..., description="Overall conclusion about the candidate in 2–3 sentences"
     )
-
-    # List of key skills found in the resume that are relevant to the job opening
     found_skills: List[str] = Field(
         default_factory=list, description="Skills that were successfully identified"
     )
-
-    # What's missing
     missing_skills: List[str] = Field(
         default_factory=list,
         description="Skills or experience missing for this position",
     )
-
-    # Improvement tips
     recommendations: List[str] = Field(
         default_factory=list,
         description="Specific steps: what to add or change in the resume",
@@ -46,7 +42,6 @@ class AnalysisResult(BaseModel):
 
 
 class AnalysisResponse(BaseModel):
-    # Response wrapper to add metadata
     status: str = "success"
     filename: str
     analysis: AnalysisResult
@@ -62,36 +57,87 @@ async def read_root():
 
 
 client = genai.Client(api_key=getenv("GEMINI_API_KEY"))
-prompt = """
-Act as a professional recruiter and career coach. Analyze the provided resume text thoroughly. Respond strictly in the following format, using the exact headings in English. Write all analysis in the same language as the resume.
-
-Key Points:
-- Identify three actionable, specific highlights from the resume (e.g., quantifiable achievements, rare skills, unique experience). Explain why each is valuable for employers.
-
-Strengths:
-- List the main strengths of the resume (e.g., strong formatting, relevant keywords, clear career progression, measurable results). Provide concrete examples from the text.
-
-Weaknesses:
-- Identify specific weaknesses (e.g., employment gaps, lack of keywords, vague descriptions, overused buzzwords, missing metrics). Refer to actual sentences or sections.
-
-What needs improvement:
-- Give 3–5 concrete, prioritized suggestions to make the resume more competitive. For each suggestion, explain the problem and how to fix it (e.g., “Add numbers to the project description…”, “Rephrase the summary to include…”).
-
-Be concise, practical, and avoid generic statements. Use bullet points within each section.
+analysis_schema = AnalysisResult.model_json_schema()
+prompt_template = f"""
+Act as a professional recruiter and career coach. Analyze the provided resume text thoroughly.
+If a job description is provided, compare the resume against it.
+If no job description is given, perform a strong resume review based solely on the resume content.
+Respond strictly in the same language as the resume.
 
 Resume:
 [TEXT]
+
+Job description:
+[JOB]
+
+Return the response strictly as valid JSON only. Do not include any markdown, code fences, explanation, or extra text.
+The output must start with '{{' and end with '}}'.
+If there is no job description, set "match_percentage" to null.
+Schema:
+{json.dumps(analysis_schema, ensure_ascii=False, indent=2)}
 """
+
+
+def extract_json_from_ai(text: str) -> str:
+    content = text.strip()
+    if content.startswith("```"):
+        lines = content.splitlines()
+        if lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].startswith("```"):
+            lines = lines[:-1]
+        content = "\n".join(lines).strip()
+    balance = 0
+    start = 0
+    while start < len(content) and content[start] != "{":
+        start += 1
+    if start == len(content):
+        return content
+    end = start
+    for i in range(start, len(content)):
+        if content[i] == "{":
+            balance += 1
+        elif content[i] == "}":
+            balance -= 1
+            if balance == 0:
+                end = i
+                break
+    return content[start : end + 1]
+
+
+def call_gemini_api(text_from_pdf: str, job_description: str) -> AnalysisResult:
+    prompt_text = prompt_template.replace("[TEXT]", text_from_pdf).replace(
+        "[JOB]", job_description or ""
+    )
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt_text,
+        config=genai_types.GenerateContentConfig(
+            temperature=0.2,
+            max_output_tokens=700,
+        ),
+    )
+    raw_text = extract_json_from_ai(response.text)
+    try:
+        parsed = json.loads(raw_text)
+        return AnalysisResult.model_validate(parsed)
+    except Exception as exc:
+        logger.error("Invalid JSON from AI: %s. Response: %s", exc, response.text)
+        raise ValueError("Failed to parse AI response") from exc
 
 
 @app.post("/upload/", response_model=AnalysisResponse)
 async def upload_file(
     file: UploadFile = File(...),
-    job_description: str = Field(..., description="Job description to compare against"),
+    job_description: str = Form("", description="Job description to compare against"),
 ):
+    if file.size and file.size > 5 * 1024 * 1024:
+        raise HTTPException(
+            status_code=413, detail="File too large. Maximum 5 MB allowed."
+        )
     pdf_bytes = await file.read()
     if not pdf_bytes:
-        return {"error": "file is empty"}
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
     pdf_stream = BytesIO(pdf_bytes)
     full_text = []
     try:
@@ -101,10 +147,10 @@ async def upload_file(
             if text:
                 full_text.append(text)
         doc.close()
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt.replace("[TEXT]", " ".join(full_text)),
-        )
-    except Exception as e:
-        return {"error": f"Error while working with file: {str(e)}"}
-    return {"response": response.text}
+        ai_data = call_gemini_api("\n".join(full_text), job_description)
+        return AnalysisResponse(filename=file.filename, analysis=ai_data)
+    except ValueError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+    except Exception as exc:
+        logger.exception("Error processing PDF or AI call")
+        raise HTTPException(status_code=500, detail="Internal server error")
