@@ -6,7 +6,6 @@
     <title>Resume AI Insight</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         .drop-zone {
             transition: border-color 0.3s, background-color 0.3s;
@@ -58,6 +57,11 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
+            </div>
+
+            <div class="space-y-2">
+                <label for="jobDescription" class="block text-sm font-medium text-gray-700">Job description (optional)</label>
+                <textarea id="jobDescription" name="job_description" rows="4" class="block w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-700 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" placeholder="Paste the target job description or role summary here."></textarea>
             </div>
 
             <button type="submit" id="submitBtn" class="w-full bg-indigo-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-70 disabled:cursor-not-allowed transition-all flex items-center justify-center space-x-2">

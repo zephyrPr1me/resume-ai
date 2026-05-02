@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from io import BytesIO
 from os import getenv
 from typing import List, Optional
@@ -10,7 +11,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from google import genai
-from google.genai import types as genai_types
+from json_repair import repair_json
 from pydantic import BaseModel, Field
 
 load_dotenv()
@@ -72,6 +73,7 @@ Job description:
 
 Return the response strictly as valid JSON only. Do not include any markdown, code fences, explanation, or extra text.
 The output must start with '{{' and end with '}}'.
+Produce every field completely and do not cut off sentences.
 If there is no job description, set "match_percentage" to null.
 Schema:
 {json.dumps(analysis_schema, ensure_ascii=False, indent=2)}
@@ -79,30 +81,37 @@ Schema:
 
 
 def extract_json_from_ai(text: str) -> str:
-    content = text.strip()
-    if content.startswith("```"):
-        lines = content.splitlines()
-        if lines[0].startswith("```"):
-            lines = lines[1:]
-        if lines and lines[-1].startswith("```"):
-            lines = lines[:-1]
-        content = "\n".join(lines).strip()
+    content = text.strip().lstrip("\ufeff\u200b")
+
+    code_block_match = re.search(r"```(?:json)?\s*\n(.*?)\n```", content, re.DOTALL)
+    if code_block_match:
+        content = code_block_match.group(1).strip()
+
     balance = 0
-    start = 0
-    while start < len(content) and content[start] != "{":
-        start += 1
-    if start == len(content):
-        return content
-    end = start
-    for i in range(start, len(content)):
-        if content[i] == "{":
+    start = -1
+    for i, ch in enumerate(content):
+        if ch == "{":
+            if start == -1:
+                start = i
             balance += 1
-        elif content[i] == "}":
+        elif ch == "}":
             balance -= 1
-            if balance == 0:
-                end = i
+            if balance == 0 and start != -1:
+                content = content[start : i + 1]
                 break
-    return content[start : end + 1]
+
+    try:
+        json.loads(content)
+        return content
+    except json.JSONDecodeError:
+        pass
+
+    try:
+        repaired = repair_json(content)
+        json.loads(repaired)
+        return repaired
+    except Exception:
+        return content
 
 
 def call_gemini_api(text_from_pdf: str, job_description: str) -> AnalysisResult:
@@ -112,10 +121,6 @@ def call_gemini_api(text_from_pdf: str, job_description: str) -> AnalysisResult:
     response = client.models.generate_content(
         model="gemini-2.5-flash",
         contents=prompt_text,
-        config=genai_types.GenerateContentConfig(
-            temperature=0.2,
-            max_output_tokens=700,
-        ),
     )
     raw_text = extract_json_from_ai(response.text)
     try:
