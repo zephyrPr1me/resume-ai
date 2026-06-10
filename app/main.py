@@ -5,7 +5,6 @@ from io import BytesIO
 from os import getenv
 from typing import List, Optional
 
-import fitz
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
@@ -13,6 +12,8 @@ from fastapi.staticfiles import StaticFiles
 from openrouter import OpenRouter
 from json_repair import repair_json
 from pydantic import BaseModel, Field
+from app.text_extractor import get_stream_extractor
+
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
@@ -84,7 +85,7 @@ Schema:
 def openrouter_client(content: str):
     with OpenRouter(api_key=API_KEY) as client:
         response = client.chat.send(
-            model="google/gemma-4-31b-it:free",
+            model="google/gemma-4-31b-it:free", #NOTE: In future, make users choose the model
             messages=[{"role": "user", "content": content}],
         )
     return response.choices[0].message.content
@@ -134,7 +135,7 @@ def call_openrouter_api(text_from_pdf: str, job_description: str) -> AnalysisRes
         logger.error("Ошибка при вызове OpenRouter API: %s", str(e))
         raise ValueError("Не удалось получить ответ от AI сервиса") from e
     if not ai_response_text:
-        raise ValueError("Пустой ответ от AI сервиса")
+        raise ValueError("Empty response from AI service")
     raw_text = extract_json_from_ai(ai_response_text)
     try:
         parsed = json.loads(raw_text)
@@ -149,26 +150,28 @@ async def upload_file(
     file: UploadFile = File(...),
     job_description: str = Form("", description="Job description to compare against"),
 ):
-    if file.size and file.size > 5 * 1024 * 1024:
-        raise HTTPException(
-            status_code=413, detail="File too large. Maximum 5 MB allowed."
-        )
     pdf_bytes = await file.read()
+    if len(pdf_bytes) > 50 * 1024 * 1024:
+        raise HTTPException(
+            status_code=413, detail="File too large. Maximum 50 MB allowed."
+        )
     if not pdf_bytes:
         raise HTTPException(status_code=400, detail="Uploaded file is empty")
-    pdf_stream = BytesIO(pdf_bytes)
-    full_text = []
+    file_stream = BytesIO(pdf_bytes)
     try:
-        doc = fitz.open(stream=pdf_stream, filetype="pdf")
-        for page in doc:
-            text = page.get_text()
-            if text:
-                full_text.append(text)
-        doc.close()
-        ai_data = call_openrouter_api("\n".join(full_text), job_description)
-        return AnalysisResponse(filename=file.filename, analysis=ai_data)
+        extractor = get_stream_extractor(file_stream, file.filename)
+        text = extractor.extract()
     except ValueError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
     except Exception as exc:
-        logger.exception("Error processing PDF or AI call")
+        logger.exception("Error processing resume file: %s", exc)
         raise HTTPException(status_code=500, detail="Internal server error")
+
+    if not text:
+        raise HTTPException(
+            status_code=422,
+            detail="Unable to extract text from the uploaded resume. Please upload a valid PDF or TXT file.",
+        )
+
+    analysis = call_openrouter_api(text, job_description)
+    return AnalysisResponse(filename=file.filename, analysis=analysis)

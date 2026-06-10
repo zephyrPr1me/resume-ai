@@ -38,9 +38,9 @@ An intelligent resume analysis tool powered by Google's Gemini AI. Upload your r
    cd resume-ai-insight
    ```
 
-2. **Create a `.env` file** in the project root with your Google API key:
+2. **Create a `.env` file** in the project root with your OpenRouter API key:
    ```env
-   GEMINI_API_KEY=your_api_key_here
+   OPENROUTER_API_KEY=your_api_key_here
    ```
 
 3. **Install dependencies** (using `uv`):
