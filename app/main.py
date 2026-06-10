@@ -13,6 +13,7 @@ from openrouter import OpenRouter
 from json_repair import repair_json
 from pydantic import BaseModel, Field
 from app.text_extractor import get_stream_extractor
+import httpx
 
 
 load_dotenv()
@@ -82,10 +83,10 @@ Schema:
 """
 
 
-def openrouter_client(content: str):
+def openrouter_client(content: str, model: str = "google/gemma-4-31b-it:free"):
     with OpenRouter(api_key=API_KEY) as client:
         response = client.chat.send(
-            model="google/gemma-4-31b-it:free", #NOTE: In future, make users choose the model
+            model=model,
             messages=[{"role": "user", "content": content}],
         )
     return response.choices[0].message.content
@@ -125,12 +126,12 @@ def extract_json_from_ai(text: str) -> str:
         return content
 
 
-def call_openrouter_api(text_from_pdf: str, job_description: str) -> AnalysisResult:
+def call_openrouter_api(text_from_pdf: str, job_description: str, model: str = "google/gemma-4-31b-it:free") -> AnalysisResult:
     prompt_text = prompt_template.replace("[TEXT]", text_from_pdf).replace(
         "[JOB]", job_description or ""
     )
     try:
-        ai_response_text = openrouter_client(prompt_text)
+        ai_response_text = openrouter_client(prompt_text, model=model)
     except Exception as e:
         logger.error("Ошибка при вызове OpenRouter API: %s", str(e))
         raise ValueError("Не удалось получить ответ от AI сервиса") from e
@@ -149,6 +150,7 @@ def call_openrouter_api(text_from_pdf: str, job_description: str) -> AnalysisRes
 async def upload_file(
     file: UploadFile = File(...),
     job_description: str = Form("", description="Job description to compare against"),
+    model: str = Form("google/gemma-4-31b-it:free", description="AI model to use for analysis"),
 ):
     pdf_bytes = await file.read()
     if len(pdf_bytes) > 50 * 1024 * 1024:
@@ -173,5 +175,33 @@ async def upload_file(
             detail="Unable to extract text from the uploaded resume. Please upload a valid PDF or TXT file.",
         )
 
-    analysis = call_openrouter_api(text, job_description)
+    analysis = call_openrouter_api(text, job_description, model=model)
     return AnalysisResponse(filename=file.filename, analysis=analysis)
+
+
+@app.get("/models-free/")
+def get_free_openrouter_models():
+    url = "https://openrouter.ai/api/v1/models"
+    with httpx.Client() as client:
+        response = client.get(url)
+        response.raise_for_status()
+        data = response.json().get("data", [])
+        
+        free_models = []
+        for model in data:
+            pricing = model.get("pricing", {})
+            try:
+                prompt_price = float(pricing.get("prompt", 1))
+                completion_price = float(pricing.get("completion", 1))
+            except (ValueError, TypeError):
+                continue
+            
+            if prompt_price == 0.0 and completion_price == 0.0:
+                free_models.append({
+                    "id": model.get("id"),
+                    "name": model.get("name"),
+                    "context_length": model.get("context_length")
+                })
+        
+        return free_models
+
