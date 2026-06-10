@@ -10,13 +10,15 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from google import genai
+from openrouter import OpenRouter
 from json_repair import repair_json
 from pydantic import BaseModel, Field
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+API_KEY = getenv("OPENROUTER_API_KEY")
 
 
 class AnalysisResult(BaseModel):
@@ -57,7 +59,6 @@ async def read_root():
     return FileResponse("app/static/index.html")
 
 
-client = genai.Client(api_key=getenv("GEMINI_API_KEY"))
 analysis_schema = AnalysisResult.model_json_schema()
 prompt_template = f"""
 Act as a professional recruiter and career coach. Analyze the provided resume text thoroughly.
@@ -78,6 +79,15 @@ If there is no job description, set "match_percentage" to null.
 Schema:
 {json.dumps(analysis_schema, ensure_ascii=False, indent=2)}
 """
+
+
+def openrouter_client(content: str):
+    with OpenRouter(api_key=API_KEY) as client:
+        response = client.chat.send(
+            model="google/gemma-4-31b-it:free",
+            messages=[{"role": "user", "content": content}],
+        )
+    return response.choices[0].message.content
 
 
 def extract_json_from_ai(text: str) -> str:
@@ -114,20 +124,23 @@ def extract_json_from_ai(text: str) -> str:
         return content
 
 
-def call_gemini_api(text_from_pdf: str, job_description: str) -> AnalysisResult:
+def call_openrouter_api(text_from_pdf: str, job_description: str) -> AnalysisResult:
     prompt_text = prompt_template.replace("[TEXT]", text_from_pdf).replace(
         "[JOB]", job_description or ""
     )
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=prompt_text,
-    )
-    raw_text = extract_json_from_ai(response.text)
+    try:
+        ai_response_text = openrouter_client(prompt_text)
+    except Exception as e:
+        logger.error("Ошибка при вызове OpenRouter API: %s", str(e))
+        raise ValueError("Не удалось получить ответ от AI сервиса") from e
+    if not ai_response_text:
+        raise ValueError("Пустой ответ от AI сервиса")
+    raw_text = extract_json_from_ai(ai_response_text)
     try:
         parsed = json.loads(raw_text)
         return AnalysisResult.model_validate(parsed)
     except Exception as exc:
-        logger.error("Invalid JSON from AI: %s. Response: %s", exc, response.text)
+        logger.error("Invalid JSON from AI: %s. Response: %s", exc, ai_response_text)
         raise ValueError("Failed to parse AI response") from exc
 
 
@@ -152,7 +165,7 @@ async def upload_file(
             if text:
                 full_text.append(text)
         doc.close()
-        ai_data = call_gemini_api("\n".join(full_text), job_description)
+        ai_data = call_openrouter_api("\n".join(full_text), job_description)
         return AnalysisResponse(filename=file.filename, analysis=ai_data)
     except ValueError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
