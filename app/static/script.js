@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const fileInfo = document.getElementById('fileInfo');
     const fileName = document.getElementById('fileName');
     const jobDescription = document.getElementById('jobDescription');
+    const modelSelect = document.getElementById('model');
     const removeFileBtn = document.getElementById('removeFile');
     const submitBtn = document.getElementById('submitBtn');
     const btnText = document.getElementById('btnText');
@@ -19,6 +20,39 @@ document.addEventListener('DOMContentLoaded', () => {
     const retryBtn = document.getElementById('retryBtn');
 
     let currentFile = null;
+
+    // --- Fetch Free Models ---
+    async function loadModels() {
+        try {
+            const response = await fetch('/models-free/');
+            if (!response.ok) throw new Error('Failed to fetch models');
+            const models = await response.json();
+            
+            if (models.length === 0) {
+                modelSelect.innerHTML = '<option value="">No free models available</option>';
+                return;
+            }
+            
+            modelSelect.innerHTML = '';
+            models.forEach(model => {
+                const option = document.createElement('option');
+                option.value = model.id;
+                option.textContent = `${model.name} (${model.context_length} ctx)`;
+                modelSelect.appendChild(option);
+            });
+            
+            // Set default to first model
+            if (models.length > 0) {
+                modelSelect.value = models[0].id;
+            }
+        } catch (error) {
+            console.error('Error loading models:', error);
+            modelSelect.innerHTML = '<option value="">Error loading models</option>';
+        }
+    }
+
+    // Load models on page load
+    loadModels();
 
     // --- Utility Functions ---
     function resetUI() {
@@ -195,6 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const formData = new FormData();
         formData.append('file', currentFile);
         formData.append('job_description', jobDescription.value.trim());
+        formData.append('model', modelSelect.value);
 
         try {
             const response = await fetch('/upload/', {

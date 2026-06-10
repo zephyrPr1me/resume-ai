@@ -698,6 +698,7 @@ dependencies = [
     { name = "openrouter" },
     { name = "pymupdf" },
     { name = "pytest" },
+    { name = "python-dotenv" },
     { name = "ruff" },
 ]
 
@@ -713,6 +714,7 @@ requires-dist = [
     { name = "openrouter", specifier = ">=0.9.1" },
     { name = "pymupdf", specifier = ">=1.27.2.3" },
     { name = "pytest", specifier = ">=9.0.3" },
+    { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "ruff", specifier = ">=0.15.12" },
 ]
 
