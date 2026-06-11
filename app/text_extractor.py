@@ -57,6 +57,7 @@ class TxtExtractor(BaseTextExtractor):
 
 class MdExtractor(TxtExtractor):
     """Markdown extractor — same as text for now."""
+
     pass
 
 
@@ -74,7 +75,9 @@ class DocxExtractor(BaseTextExtractor):
         try:
             from docx import Document
         except Exception as e:
-            raise ValueError("python-docx is required to extract .docx files. Install with `pip install python-docx`") from e
+            raise ValueError(
+                "python-docx is required to extract .docx files. Install with `pip install python-docx`"
+            ) from e
 
         # python-docx expects a path or a file-like object; BytesIO works
         self.file_stream.seek(0)
@@ -85,7 +88,7 @@ class DocxExtractor(BaseTextExtractor):
             from tempfile import NamedTemporaryFile
 
             self.file_stream.seek(0)
-            with NamedTemporaryFile(delete=True, suffix='.docx') as tmp:
+            with NamedTemporaryFile(delete=True, suffix=".docx") as tmp:
                 tmp.write(self.file_stream.read())
                 tmp.flush()
                 doc = Document(tmp.name)

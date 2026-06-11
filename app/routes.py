@@ -2,16 +2,20 @@ import asyncio
 import httpx
 from io import BytesIO
 
+
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
+
 
 from app.config import logger
 from app.ai import call_openrouter_api
 from app.schemas import AnalysisResponse
 from app.text_extractor import get_stream_extractor
 
+
 # Timeout for upload processing in seconds
 UPLOAD_TIMEOUT = 180
+
 
 router = APIRouter()
 
@@ -68,7 +72,7 @@ async def upload_file(
                     detail="Unable to extract text from the uploaded resume. Please upload a valid PDF or TXT file.",
                 )
 
-            analysis = call_openrouter_api(text, job_description, model=model)
+            analysis = await call_openrouter_api(text, job_description, model=model)
             return AnalysisResponse(filename=file.filename, analysis=analysis)
     except asyncio.TimeoutError:
         logger.warning("Upload request timed out after %s seconds", UPLOAD_TIMEOUT)
@@ -87,10 +91,10 @@ async def upload_file(
 
 
 @router.get("/models-free/")
-def get_free_openrouter_models():
+async def get_free_openrouter_models():
     url = "https://openrouter.ai/api/v1/models"
-    with httpx.Client() as client:
-        response = client.get(url)
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url)
         response.raise_for_status()
         data = response.json().get("data", [])
 
