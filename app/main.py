@@ -54,6 +54,7 @@ class AnalysisResponse(BaseModel):
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
+app.mount("/assets", StaticFiles(directory="assets"), name="assets")
 
 
 @app.get("/")
