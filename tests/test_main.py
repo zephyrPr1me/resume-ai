@@ -28,6 +28,7 @@ client = TestClient(app)
 
 # ============ Unit Tests: JSON Extraction ============
 
+
 class TestExtractJsonFromAi:
     """Tests for JSON extraction from AI responses."""
 
@@ -71,13 +72,14 @@ class TestExtractJsonFromAi:
 
 # ============ Unit Tests: Text Extraction ============
 
+
 class TestTextExtractor:
     """Tests for text extraction from files."""
 
     def test_txt_extractor(self):
         """Should extract text from TXT file."""
         content = "This is a test resume\nWith multiple lines\n"
-        stream = BytesIO(content.encode('utf-8'))
+        stream = BytesIO(content.encode("utf-8"))
         extractor = TxtExtractor(stream, "resume.txt")
         result = extractor.extract()
         assert result == content
@@ -106,7 +108,7 @@ class TestTextExtractor:
         stream = MagicMock(spec=io.BytesIO)
         stream.seek = MagicMock()
         stream.tell = MagicMock(return_value=51 * 1024 * 1024)  # 51MB
-        
+
         with pytest.raises(ValueError, match="too large to process"):
             TxtExtractor(stream, "huge_file.txt")
 
@@ -117,6 +119,7 @@ class TestTextExtractor:
 
 
 # ============ Unit Tests: AnalysisResult Validation ============
+
 
 class TestAnalysisResult:
     """Tests for AnalysisResult model validation."""
@@ -157,6 +160,7 @@ class TestAnalysisResult:
 
 # ============ Integration Tests: HTTP Endpoints ============
 
+
 class TestHttpEndpoints:
     """Integration tests for HTTP endpoints."""
 
@@ -178,10 +182,7 @@ class TestHttpEndpoints:
 
     def test_upload_empty_file(self):
         """POST /upload/ with empty file should return 400."""
-        response = client.post(
-            "/upload/",
-            files={"file": ("empty.pdf", BytesIO(b""))}
-        )
+        response = client.post("/upload/", files={"file": ("empty.pdf", BytesIO(b""))})
         assert response.status_code == 400
         assert "empty" in response.json()["detail"].lower()
 
@@ -190,8 +191,7 @@ class TestHttpEndpoints:
         # Create a file larger than 50MB
         large_data = b"x" * (51 * 1024 * 1024)
         response = client.post(
-            "/upload/",
-            files={"file": ("large.pdf", BytesIO(large_data))}
+            "/upload/", files={"file": ("large.pdf", BytesIO(large_data))}
         )
         assert response.status_code == 413
 
@@ -199,20 +199,25 @@ class TestHttpEndpoints:
     def test_upload_with_valid_pdf(self, mock_openrouter):
         """POST /upload/ with valid PDF and mocked AI should return 200."""
         # Mock AI response
-        mock_openrouter.return_value = json.dumps({
-            "match_percentage": 90,
-            "summary": "Excellent candidate",
-            "found_skills": ["Python"],
-            "missing_skills": [],
-            "recommendations": ["Add certifications"],
-        })
-        
+        mock_openrouter.return_value = json.dumps(
+            {
+                "match_percentage": 90,
+                "summary": "Excellent candidate",
+                "found_skills": ["Python"],
+                "missing_skills": [],
+                "recommendations": ["Add certifications"],
+            }
+        )
+
         if FILE_PATH.exists():
             with open(FILE_PATH, "rb") as f:
                 response = client.post(
                     "/upload/",
                     files={"file": f},
-                    data={"job_description": "Python Developer", "model": "google/gemma-4-31b-it:free"}
+                    data={
+                        "job_description": "Python Developer",
+                        "model": "google/gemma-4-31b-it:free",
+                    },
                 )
             assert response.status_code == 200
             data = response.json()
@@ -224,19 +229,21 @@ class TestHttpEndpoints:
     @patch("app.main.openrouter_client")
     def test_upload_with_txt_file(self, mock_openrouter):
         """POST /upload/ with TXT file should work."""
-        mock_openrouter.return_value = json.dumps({
-            "match_percentage": 75,
-            "summary": "Good fit",
-            "found_skills": [],
-            "missing_skills": [],
-            "recommendations": [],
-        })
-        
+        mock_openrouter.return_value = json.dumps(
+            {
+                "match_percentage": 75,
+                "summary": "Good fit",
+                "found_skills": [],
+                "missing_skills": [],
+                "recommendations": [],
+            }
+        )
+
         txt_content = b"Resume in plain text format\nSkilled in Python and JavaScript"
         response = client.post(
             "/upload/",
             files={"file": ("resume.txt", BytesIO(txt_content))},
-            data={"job_description": "", "model": "google/gemma-4-31b-it:free"}
+            data={"job_description": "", "model": "google/gemma-4-31b-it:free"},
         )
         assert response.status_code == 200
         data = response.json()
@@ -246,29 +253,31 @@ class TestHttpEndpoints:
         """POST /upload/ without file should return error."""
         response = client.post(
             "/upload/",
-            data={"job_description": "Test", "model": "google/gemma-4-31b-it:free"}
+            data={"job_description": "Test", "model": "google/gemma-4-31b-it:free"},
         )
         assert response.status_code == 422
 
     @patch("app.main.openrouter_client")
     def test_upload_with_job_description(self, mock_openrouter):
         """POST /upload/ should pass job_description to AI."""
-        mock_openrouter.return_value = json.dumps({
-            "match_percentage": 88,
-            "summary": "Strong match",
-            "found_skills": [],
-            "missing_skills": [],
-            "recommendations": [],
-        })
-        
+        mock_openrouter.return_value = json.dumps(
+            {
+                "match_percentage": 88,
+                "summary": "Strong match",
+                "found_skills": [],
+                "missing_skills": [],
+                "recommendations": [],
+            }
+        )
+
         txt_content = b"Python developer with 5 years experience"
         response = client.post(
             "/upload/",
             files={"file": ("resume.txt", BytesIO(txt_content))},
             data={
                 "job_description": "Senior Python Developer - remote",
-                "model": "google/gemma-4-31b-it:free"
-            }
+                "model": "google/gemma-4-31b-it:free",
+            },
         )
         assert response.status_code == 200
         # Verify the job description was passed
@@ -280,12 +289,12 @@ class TestHttpEndpoints:
     def test_upload_ai_error_handling(self, mock_openrouter):
         """POST /upload/ should handle AI API errors gracefully."""
         mock_openrouter.side_effect = Exception("API Error")
-        
+
         txt_content = b"Test resume"
         response = client.post(
             "/upload/",
             files={"file": ("resume.txt", BytesIO(txt_content))},
-            data={"job_description": "", "model": "google/gemma-4-31b-it:free"}
+            data={"job_description": "", "model": "google/gemma-4-31b-it:free"},
         )
         assert response.status_code in [502, 500]
 
@@ -293,12 +302,12 @@ class TestHttpEndpoints:
     def test_upload_invalid_json_from_ai(self, mock_openrouter):
         """POST /upload/ should handle invalid JSON from AI."""
         mock_openrouter.return_value = "This is not valid JSON"
-        
+
         txt_content = b"Test resume"
         response = client.post(
             "/upload/",
             files={"file": ("resume.txt", BytesIO(txt_content))},
-            data={"job_description": "", "model": "google/gemma-4-31b-it:free"}
+            data={"job_description": "", "model": "google/gemma-4-31b-it:free"},
         )
         # Should either repair or return 502
         assert response.status_code in [200, 502]
@@ -306,28 +315,31 @@ class TestHttpEndpoints:
 
 # ============ Integration Tests: Model Parameter ============
 
+
 class TestModelParameter:
     """Tests for model selection parameter."""
 
     @patch("app.main.openrouter_client")
     def test_upload_with_custom_model(self, mock_openrouter):
         """POST /upload/ should use selected model."""
-        mock_openrouter.return_value = json.dumps({
-            "match_percentage": 80,
-            "summary": "Using custom model",
-            "found_skills": [],
-            "missing_skills": [],
-            "recommendations": [],
-        })
-        
+        mock_openrouter.return_value = json.dumps(
+            {
+                "match_percentage": 80,
+                "summary": "Using custom model",
+                "found_skills": [],
+                "missing_skills": [],
+                "recommendations": [],
+            }
+        )
+
         custom_model = "openai/gpt-4"
         txt_content = b"Resume text"
         response = client.post(
             "/upload/",
             files={"file": ("resume.txt", BytesIO(txt_content))},
-            data={"job_description": "", "model": custom_model}
+            data={"job_description": "", "model": custom_model},
         )
-        
+
         assert response.status_code == 200
         # Verify openrouter_client was called with correct model
         mock_openrouter.assert_called_once()
@@ -335,20 +347,21 @@ class TestModelParameter:
     @patch("app.main.openrouter_client")
     def test_upload_default_model(self, mock_openrouter):
         """POST /upload/ should use default model if not specified."""
-        mock_openrouter.return_value = json.dumps({
-            "match_percentage": 80,
-            "summary": "Using default model",
-            "found_skills": [],
-            "missing_skills": [],
-            "recommendations": [],
-        })
-        
+        mock_openrouter.return_value = json.dumps(
+            {
+                "match_percentage": 80,
+                "summary": "Using default model",
+                "found_skills": [],
+                "missing_skills": [],
+                "recommendations": [],
+            }
+        )
+
         txt_content = b"Resume text"
         response = client.post(
             "/upload/",
             files={"file": ("resume.txt", BytesIO(txt_content))},
-            data={"job_description": ""}
+            data={"job_description": ""},
         )
-        
-        assert response.status_code == 200
 
+        assert response.status_code == 200

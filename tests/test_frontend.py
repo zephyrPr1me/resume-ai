@@ -18,7 +18,7 @@ class TestFrontendModelSelection:
     def test_models_free_endpoint_returns_valid_structure(self):
         """Models endpoint should return list with id, name, context_length."""
         response = client.get("/models-free/")
-        
+
         # May fail due to API issues, but should be graceful
         if response.status_code == 200:
             models = response.json()
@@ -36,22 +36,32 @@ class TestFrontendUploadFlow:
     @patch("app.main.openrouter_client")
     def test_upload_flow_with_job_description(self, mock_openrouter):
         """Simulate: user uploads file + job description + selects model."""
-        mock_openrouter.return_value = json.dumps({
-            "match_percentage": 85,
-            "summary": "Strong candidate with relevant experience",
-            "found_skills": ["Python", "FastAPI", "Docker"],
-            "missing_skills": ["Kubernetes"],
-            "recommendations": ["Add cloud certifications", "Expand open source work"],
-        })
+        mock_openrouter.return_value = json.dumps(
+            {
+                "match_percentage": 85,
+                "summary": "Strong candidate with relevant experience",
+                "found_skills": ["Python", "FastAPI", "Docker"],
+                "missing_skills": ["Kubernetes"],
+                "recommendations": [
+                    "Add cloud certifications",
+                    "Expand open source work",
+                ],
+            }
+        )
 
         # Simulate frontend sending file + form data
         response = client.post(
             "/upload/",
-            files={"file": ("resume.txt", BytesIO(b"Python developer with 5 years experience"))},
+            files={
+                "file": (
+                    "resume.txt",
+                    BytesIO(b"Python developer with 5 years experience"),
+                )
+            },
             data={
                 "job_description": "Senior Python Engineer - FastAPI specialist",
-                "model": "google/gemma-4-31b-it:free"
-            }
+                "model": "google/gemma-4-31b-it:free",
+            },
         )
 
         assert response.status_code == 200
@@ -64,18 +74,20 @@ class TestFrontendUploadFlow:
     @patch("app.main.openrouter_client")
     def test_upload_flow_without_job_description(self, mock_openrouter):
         """Simulate: user uploads file without job description."""
-        mock_openrouter.return_value = json.dumps({
-            "match_percentage": None,  # None when no job description
-            "summary": "General resume review",
-            "found_skills": ["Python"],
-            "missing_skills": [],
-            "recommendations": [],
-        })
+        mock_openrouter.return_value = json.dumps(
+            {
+                "match_percentage": None,  # None when no job description
+                "summary": "General resume review",
+                "found_skills": ["Python"],
+                "missing_skills": [],
+                "recommendations": [],
+            }
+        )
 
         response = client.post(
             "/upload/",
             files={"file": ("resume.txt", BytesIO(b"Python developer"))},
-            data={"job_description": "", "model": "google/gemma-4-31b-it:free"}
+            data={"job_description": "", "model": "google/gemma-4-31b-it:free"},
         )
 
         assert response.status_code == 200
@@ -85,19 +97,21 @@ class TestFrontendUploadFlow:
     @patch("app.main.openrouter_client")
     def test_upload_flow_model_passed_correctly(self, mock_openrouter):
         """Simulate: verify selected model is sent to backend."""
-        mock_openrouter.return_value = json.dumps({
-            "match_percentage": 75,
-            "summary": "Candidate analysis",
-            "found_skills": [],
-            "missing_skills": [],
-            "recommendations": [],
-        })
+        mock_openrouter.return_value = json.dumps(
+            {
+                "match_percentage": 75,
+                "summary": "Candidate analysis",
+                "found_skills": [],
+                "missing_skills": [],
+                "recommendations": [],
+            }
+        )
 
         selected_model = "openai/gpt-4"
         response = client.post(
             "/upload/",
             files={"file": ("resume.txt", BytesIO(b"Test"))},
-            data={"job_description": "", "model": selected_model}
+            data={"job_description": "", "model": selected_model},
         )
 
         assert response.status_code == 200
@@ -112,7 +126,7 @@ class TestFrontendUploadFlow:
         response = client.post(
             "/upload/",
             files={"file": ("resume.txt", BytesIO(b"Test"))},
-            data={"job_description": "", "model": "google/gemma-4-31b-it:free"}
+            data={"job_description": "", "model": "google/gemma-4-31b-it:free"},
         )
 
         # Should return error status
@@ -126,7 +140,7 @@ class TestFrontendUploadFlow:
         response = client.post(
             "/upload/",
             files={"file": ("resume.txt", BytesIO(b""))},
-            data={"job_description": "", "model": "google/gemma-4-31b-it:free"}
+            data={"job_description": "", "model": "google/gemma-4-31b-it:free"},
         )
 
         assert response.status_code == 400
@@ -144,7 +158,7 @@ class TestFrontendUploadFlow:
             "recommendations": [
                 "Consider learning Kubernetes for DevOps roles",
                 "Add more projects to GitHub",
-                "Get AWS certifications"
+                "Get AWS certifications",
             ],
         }
         mock_openrouter.return_value = json.dumps(mock_response)
@@ -152,7 +166,10 @@ class TestFrontendUploadFlow:
         response = client.post(
             "/upload/",
             files={"file": ("resume.txt", BytesIO(b"Full stack developer"))},
-            data={"job_description": "Full Stack Engineer", "model": "google/gemma-4-31b-it:free"}
+            data={
+                "job_description": "Full Stack Engineer",
+                "model": "google/gemma-4-31b-it:free",
+            },
         )
 
         assert response.status_code == 200
@@ -181,7 +198,9 @@ class TestFrontendUploadFlow:
 
         # Static files mount
         response = client.get("/static/index.html")
-        assert response.status_code == 200 or response.status_code == 404  # Mount may vary
+        assert (
+            response.status_code == 200 or response.status_code == 404
+        )  # Mount may vary
 
 
 class TestFrontendResponseHandling:
@@ -190,18 +209,20 @@ class TestFrontendResponseHandling:
     @patch("app.main.openrouter_client")
     def test_response_json_structure(self, mock_openrouter):
         """Verify response structure matches frontend expectations."""
-        mock_openrouter.return_value = json.dumps({
-            "match_percentage": 88,
-            "summary": "Test summary",
-            "found_skills": ["Skill1"],
-            "missing_skills": ["Skill2"],
-            "recommendations": ["Rec1"],
-        })
+        mock_openrouter.return_value = json.dumps(
+            {
+                "match_percentage": 88,
+                "summary": "Test summary",
+                "found_skills": ["Skill1"],
+                "missing_skills": ["Skill2"],
+                "recommendations": ["Rec1"],
+            }
+        )
 
         response = client.post(
             "/upload/",
             files={"file": ("resume.txt", BytesIO(b"Test"))},
-            data={"job_description": "", "model": "google/gemma-4-31b-it:free"}
+            data={"job_description": "", "model": "google/gemma-4-31b-it:free"},
         )
 
         data = response.json()
@@ -209,28 +230,36 @@ class TestFrontendResponseHandling:
         assert "status" in data
         assert "filename" in data
         assert "analysis" in data
-        
+
         # Frontend expects these analysis fields
         analysis = data["analysis"]
-        required_fields = ["match_percentage", "summary", "found_skills", "missing_skills", "recommendations"]
+        required_fields = [
+            "match_percentage",
+            "summary",
+            "found_skills",
+            "missing_skills",
+            "recommendations",
+        ]
         for field in required_fields:
             assert field in analysis, f"Missing field: {field}"
 
     @patch("app.main.openrouter_client")
     def test_response_with_null_match_percentage(self, mock_openrouter):
         """Frontend should handle null match_percentage."""
-        mock_openrouter.return_value = json.dumps({
-            "match_percentage": None,
-            "summary": "General review",
-            "found_skills": [],
-            "missing_skills": [],
-            "recommendations": [],
-        })
+        mock_openrouter.return_value = json.dumps(
+            {
+                "match_percentage": None,
+                "summary": "General review",
+                "found_skills": [],
+                "missing_skills": [],
+                "recommendations": [],
+            }
+        )
 
         response = client.post(
             "/upload/",
             files={"file": ("resume.txt", BytesIO(b"Test"))},
-            data={"job_description": "", "model": "google/gemma-4-31b-it:free"}
+            data={"job_description": "", "model": "google/gemma-4-31b-it:free"},
         )
 
         data = response.json()
@@ -239,18 +268,20 @@ class TestFrontendResponseHandling:
     @patch("app.main.openrouter_client")
     def test_response_with_empty_lists(self, mock_openrouter):
         """Frontend should handle empty skill/recommendation lists."""
-        mock_openrouter.return_value = json.dumps({
-            "match_percentage": 50,
-            "summary": "Basic candidate",
-            "found_skills": [],
-            "missing_skills": [],
-            "recommendations": [],
-        })
+        mock_openrouter.return_value = json.dumps(
+            {
+                "match_percentage": 50,
+                "summary": "Basic candidate",
+                "found_skills": [],
+                "missing_skills": [],
+                "recommendations": [],
+            }
+        )
 
         response = client.post(
             "/upload/",
             files={"file": ("resume.txt", BytesIO(b"Test"))},
-            data={"job_description": "", "model": "google/gemma-4-31b-it:free"}
+            data={"job_description": "", "model": "google/gemma-4-31b-it:free"},
         )
 
         data = response.json()
