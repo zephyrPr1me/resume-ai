@@ -56,11 +56,12 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000).
 
 ## 📡 API Overview
 
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/` | Serves the frontend UI |
-| `POST` | `/upload/` | Analyzes resume file with optional job description |
-| `GET` | `/models-free/` | Returns free OpenRouter models |
+| Method | Endpoint | Description | Timeout |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/` | Serves the frontend UI | - |
+| `GET` | `/health` | Health check for monitoring | - |
+| `POST` | `/upload/` | Analyzes resume file with optional job description | 180s |
+| `GET` | `/models-free/` | Returns free OpenRouter models | - |
 
 **Request Params**
 - `file`: PDF or TXT resume (required)
@@ -82,6 +83,15 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000).
 }
 ```
 
+**Health Check Example**
+```json
+{
+  "status": "healthy",
+  "service": "resume-ai-insight",
+  "version": "0.1.0"
+}
+```
+
 ## 🛠 Development
 
 Run tests:
@@ -94,6 +104,13 @@ Lint and format:
 python -m ruff check .
 python -m ruff format .
 ```
+
+### Features
+
+**Request handling:**
+- ⏱️ Automatic timeouts (180 seconds for `/upload/` endpoint)
+- ❌ Request cancellation support (CancelledError handling)
+- 🏥 Health check endpoint (`/health`) for monitoring and liveness probes
 
 ### Project structure
 

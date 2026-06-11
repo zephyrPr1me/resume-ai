@@ -1,11 +1,16 @@
+import asyncio
 import json
 import re
+from typing import Optional
 
 from openrouter import OpenRouter
 from json_repair import repair_json
 
 from app.config import API_KEY, logger
 from app.schemas import AnalysisResult
+
+# Timeout for OpenRouter API calls in seconds
+OPENROUTER_TIMEOUT = 120
 
 analysis_schema = AnalysisResult.model_json_schema()
 prompt_template = f"""
@@ -29,13 +34,33 @@ Schema:
 """
 
 
-def openrouter_client(content: str, model: str = "google/gemma-4-31b-it:free"):
-    with OpenRouter(api_key=API_KEY) as client:
-        response = client.chat.send(
-            model=model,
-            messages=[{"role": "user", "content": content}],
-        )
-    return response.choices[0].message.content
+def openrouter_client(content: str, model: str = "google/gemma-4-31b-it:free", timeout: Optional[float] = OPENROUTER_TIMEOUT):
+    """
+    Call OpenRouter API with timeout support.
+    
+    Args:
+        content: Prompt text to send
+        model: Model ID to use
+        timeout: Request timeout in seconds
+        
+    Raises:
+        TimeoutError: If request exceeds timeout
+        ValueError: If response is empty
+        Exception: For other API errors
+    """
+    try:
+        with OpenRouter(api_key=API_KEY) as client:
+            response = client.chat.send(
+                model=model,
+                messages=[{"role": "user", "content": content}],
+            )
+        return response.choices[0].message.content
+    except asyncio.TimeoutError:
+        raise TimeoutError(f"OpenRouter API request timed out after {timeout} seconds")
+    except TimeoutError:
+        raise
+    except Exception as e:
+        raise
 
 
 def extract_json_from_ai(text: str) -> str:
@@ -80,6 +105,9 @@ def call_openrouter_api(
     )
     try:
         ai_response_text = openrouter_client(prompt_text, model=model)
+    except TimeoutError as e:
+        logger.error("OpenRouter API timeout: %s", str(e))
+        raise ValueError("AI service request timed out. Please try again.") from e
     except Exception as e:
         logger.error("Ошибка при вызове OpenRouter API: %s", str(e))
         raise ValueError("Не удалось получить ответ от AI сервиса") from e
