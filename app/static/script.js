@@ -447,7 +447,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return card;
     }
 
-    function displayResult(data) {
+    function displayResult(data, meta = {}, rawText = '') {
         const analysis = data.analysis || data;
         const filename = data.filename || analysis.filename || '';
 
@@ -470,6 +470,44 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
         headerCard.appendChild(summaryParagraph);
         responseCards.appendChild(headerCard);
+
+        // Additional info card (model, duration, status)
+        const infoCard = document.createElement('div');
+        infoCard.className = 'bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700 shadow-sm flex items-start justify-between';
+        const infoLeft = document.createElement('div');
+        infoLeft.innerHTML = `
+            <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-100">Additional info</h4>
+            <div class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                <div>Model: <span class="font-medium text-gray-700 dark:text-gray-200">${meta.model || 'n/a'}</span></div>
+                <div>Request time: <span class="font-medium text-gray-700 dark:text-gray-200">${meta.durationMs ? meta.durationMs + ' ms' : 'n/a'}</span></div>
+                <div>Status: <span class="font-medium text-gray-700 dark:text-gray-200">${meta.status || 'n/a'}</span></div>
+            </div>
+        `;
+        const rawBtn = document.createElement('button');
+        rawBtn.className = 'text-sm text-indigo-600 dark:text-indigo-400 hover:underline';
+        rawBtn.textContent = 'Show raw JSON';
+
+        const rawPre = document.createElement('pre');
+        rawPre.className = 'hidden mt-3 overflow-auto text-xs p-3 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded';
+        rawPre.style.maxHeight = '240px';
+        rawPre.textContent = rawText || JSON.stringify({ filename, analysis }, null, 2);
+
+        rawBtn.addEventListener('click', () => {
+            if (rawPre.classList.contains('hidden')) {
+                rawPre.classList.remove('hidden');
+                rawBtn.textContent = 'Hide raw JSON';
+            } else {
+                rawPre.classList.add('hidden');
+                rawBtn.textContent = 'Show raw JSON';
+            }
+        });
+
+        infoCard.appendChild(infoLeft);
+        const right = document.createElement('div');
+        right.appendChild(rawBtn);
+        infoCard.appendChild(right);
+        responseCards.appendChild(infoCard);
+        responseCards.appendChild(rawPre);
 
         if (analysis.found_skills?.length) {
             responseCards.appendChild(createListCard('Found skills', analysis.found_skills, 'text-green-500'));
@@ -522,6 +560,8 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('job_description', jobDescription.value.trim());
         formData.append('model', selectedModelIdInput.value || 'google/gemma-4-31b-it:free');
 
+        const startTime = Date.now();
+        let rawText = '';
         try {
             const response = await fetch('/upload/', {
                 method: 'POST',
@@ -530,7 +570,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             console.log('Response status:', response.status, response.statusText);
 
-            const rawText = await response.text();
+            rawText = await response.text();
             console.log('Raw response:', rawText);
 
             let data;
@@ -540,9 +580,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error('Response is not valid JSON. First 200 chars: ' + rawText.substring(0, 200));
             }
 
+            const durationMs = Date.now() - startTime;
+
             if (response.ok) {
                 if (data.analysis || data.match_percentage) {
-                    displayResult(data);
+                    displayResult(data, {
+                        model: selectedModelIdInput.value || 'google/gemma-4-31b-it:free',
+                        durationMs,
+                        status: response.status
+                    }, rawText);
                 } else if (data.error) {
                     showError(data.error);
                 } else {
@@ -552,7 +598,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 showError(data.detail || data.error || `Server returned an error (status ${response.status})`);
             }
         } catch (error) {
-            showError('Network or parsing error', error.message);
+            showError('Network or parsing error', error.message || error);
         } finally {
             loading.classList.add('hidden');
             submitBtn.disabled = false;
