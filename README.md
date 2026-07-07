@@ -5,54 +5,75 @@
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Code Style](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 
-An intelligent resume analysis service powered by **OpenRouter API**. Upload your PDF or TXT resume and receive structured feedback on strengths, skill gaps, and recommendations.
+An intelligent resume analysis service powered by the OpenRouter API. Upload a PDF or TXT resume to receive structured feedback: match percentage, found/missing skills, a summary, and tailored recommendations.
 
 ## ✨ Features
 
-- 📄 **Resume parsing**: PDF/TXT text extraction with PyMuPDF.
-- 🤖 **AI-powered review**: Match percentage, summary, found skills, missing skills, and recommendations.
-- 🎯 **Job matching**: Optional job description input for role-specific analysis.
-- 🧩 **Modular backend**: Clean separation of routes, AI logic, schemas, config, and extraction.
+- PDF/TXT resume parsing with PyMuPDF
+- AI-powered review (summary, match score, recommendations)
+- Optional job description input for role-specific analysis
+- Clean, modular backend (routes, AI logic, schemas, extraction)
 
 ## 🛠 Tech Stack
 
-- **Backend**: FastAPI, Python 3.12+, Pydantic
-- **AI**: OpenRouter
-- **PDF parsing**: PyMuPDF (`fitz`)
-- **HTTP client**: httpx
-- **Linting**: Ruff
+- Backend: FastAPI, Python 3.12+, Pydantic
+- AI: OpenRouter
+- PDF parsing: PyMuPDF (`fitz`)
+- HTTP client: httpx
+- Linting: Ruff
 
-## ⚡ Quick Start
+## ⚡ Quick Start (Backend)
 
 ### Prerequisites
 - Python 3.12+
 - OpenRouter API key
 
-### Installation
+### Local install
 
-1. Clone the repository:
-   ```bash
-   git clone <repository-url>
-   cd resume-ai
-   ```
+1. Clone the repository
+```bash
+git clone <repository-url>
+cd resume-ai
+```
 
-2. Install dependencies:
-   ```bash
-   python -m pip install -e .
-   ```
+2. Install Python dependencies
+```bash
+python -m pip install -e .
+```
 
-3. Create a `.env` file:
-   ```env
-   OPENROUTER_API_KEY=your_api_key_here
-   ```
+3. Add environment variables in a `.env` file (see `app/config.py`)
+```env
+OPENROUTER_API_KEY=your_api_key_here
+```
 
-### Run the app
-
+4. Run the backend
 ```bash
 python -m uvicorn app.main:app --reload
 ```
 
-Open [http://127.0.0.1:8000](http://127.0.0.1:8000).
+The API will be available at http://127.0.0.1:8000
+
+## 🧭 Frontend (optional)
+
+The repository includes a Next.js frontend in `app/frontend`. To run it locally:
+
+```bash
+cd app/frontend
+npm install
+npm run dev
+```
+
+The frontend runs on [http://localhost:3000](http://localhost:3000) by default and communicates with the backend API.
+
+## 🐳 Docker
+
+Build and run both services with Docker Compose (if you prefer):
+
+```bash
+docker compose up --build
+```
+
+This will build the backend image and serve the app. See `docker-compose.yml` for service details and ports.
 
 ## 📡 API Overview
 
@@ -63,12 +84,12 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000).
 | `POST` | `/upload/` | Analyzes resume file with optional job description | 180s |
 | `GET` | `/models-free/` | Returns free OpenRouter models | - |
 
-**Request Params**
+Request params
 - `file`: PDF or TXT resume (required)
 - `job_description`: Target job description text (optional)
 - `model`: OpenRouter model ID (optional)
 
-**Response Example**
+Response example
 ```json
 {
   "status": "success",
@@ -83,7 +104,7 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000).
 }
 ```
 
-**Health Check Example**
+Health check example
 ```json
 {
   "status": "healthy",
@@ -94,86 +115,47 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000).
 
 ## 🛠 Development
 
-Run tests:
+Run tests
 ```bash
-python -m pytest
+pytest
 ```
 
-Lint and format:
+Run a specific test
+```bash
+pytest tests/test_main.py
+```
+
+Lint and format
 ```bash
 python -m ruff check .
 python -m ruff format .
 ```
 
-### Features
-
-**Request handling:**
-- ⏱️ Automatic timeouts (180 seconds for `/upload/` endpoint)
-- ❌ Request cancellation support (CancelledError handling)
-- 🏥 Health check endpoint (`/health`) for monitoring and liveness probes
-
-### Project structure
+## Project structure
 
 ```
 app/
-├── main.py          # FastAPI app entrypoint
-├── routes.py        # API route handlers
-├── ai.py            # AI prompt construction and response parsing
-├── schemas.py       # Pydantic models
-├── config.py        # dotenv and runtime configuration
-├── text_extractor.py# Resume parsing utilities
-└── static/          # Frontend HTML/JS
-assets/
+├── main.py
+├── routes.py
+├── ai.py
+├── schemas.py
+├── config.py
+├── text_extractor.py
+└── frontend/        # Next.js frontend (app/frontend)
 tests/
 pyproject.toml
+docker-compose.yml
+Dockerfile
 README.md
 LICENSE
 ```
 
-## 🧪 Testing
-
-### Run tests
-```bash
-pytest
-```
-
-### Run a specific test file
-```bash
-pytest tests/test_main.py
-pytest tests/test_frontend.py
-```
-
-### Run with coverage report
-```bash
-pytest --cov=app --cov-report=html
-```
-
-### Run a specific test case
-```bash
-pytest tests/test_main.py::TestExtractJsonFromAi::test_extract_json_valid_json
-pytest -k "test_upload" -v
-```
-
-### Run only unit tests
-```bash
-pytest -m unit
-```
-
-### Run only integration tests
-```bash
-pytest -m integration
-```
-
-### Run with verbose output
-```bash
-pytest -v
-```
-
 ## 🔮 Future Enhancements
-- [ ] DOCX/DOC support
-- [ ] ATS compatibility scoring
-- [ ] Resume version comparison
-- [ ] User auth and history tracking
+
+- DOCX/DOC support
+- ATS compatibility scoring
+- Resume version comparison
+- User auth and history tracking
 
 ## 📄 License
 
