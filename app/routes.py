@@ -16,11 +16,6 @@ UPLOAD_TIMEOUT = 180
 router = APIRouter()
 
 
-@router.get("/")
-async def read_root():
-    return FileResponse("app/static/index.html")
-
-
 @router.get("/health")
 async def health_check():
     """Health check endpoint for monitoring and liveness probes."""

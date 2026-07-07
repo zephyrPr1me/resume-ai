@@ -34,15 +34,19 @@ Schema:
 """
 
 
-def openrouter_client(content: str, model: str = "google/gemma-4-31b-it:free", timeout: Optional[float] = OPENROUTER_TIMEOUT):
+def openrouter_client(
+    content: str,
+    model: str = "google/gemma-4-31b-it:free",
+    timeout: Optional[float] = OPENROUTER_TIMEOUT,
+):
     """
     Call OpenRouter API with timeout support.
-    
+
     Args:
         content: Prompt text to send
         model: Model ID to use
         timeout: Request timeout in seconds
-        
+
     Raises:
         TimeoutError: If request exceeds timeout
         ValueError: If response is empty
