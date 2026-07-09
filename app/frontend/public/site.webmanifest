@@ -1,0 +1,22 @@
+{
+  "name": "Resume AI",
+  "short_name": "Resume AI",
+  "description": "Умный анализ резюме с помощью AI",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050A09",
+  "theme_color": "#E879F9",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

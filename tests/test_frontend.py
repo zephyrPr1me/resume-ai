@@ -8,18 +8,14 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.schemas import AnalysisResult, JobMatchResult, ProfileImprovementResult
 
 client = TestClient(app)
 
 
 class TestFrontendModelSelection:
-    """Tests for frontend model selection feature."""
-
     def test_models_free_endpoint_returns_valid_structure(self):
-        """Models endpoint should return list with id, name, context_length."""
-        response = client.get("/models-free/")
-
-        # May fail due to API issues, but should be graceful
+        response = client.get("/api/models-free/")
         if response.status_code == 200:
             models = response.json()
             assert isinstance(models, list)
@@ -30,34 +26,177 @@ class TestFrontendModelSelection:
                 assert "context_length" in model
 
 
-class TestFrontendUploadFlow:
-    """Tests simulating frontend upload workflows."""
-
-    @patch("app.main.openrouter_client")
-    def test_upload_flow_with_job_description(self, mock_openrouter):
-        """Simulate: user uploads file + job description + selects model."""
-        mock_openrouter.return_value = json.dumps(
-            {
-                "match_percentage": 85,
-                "summary": "Strong candidate with relevant experience",
-                "found_skills": ["Python", "FastAPI", "Docker"],
-                "missing_skills": ["Kubernetes"],
-                "recommendations": [
-                    "Add cloud certifications",
-                    "Expand open source work",
-                ],
-            }
+class TestFrontendAnalyzeFlow:
+    @patch("app.routes.call_openrouter_api")
+    def test_analyze_text_success(self, mock_analysis):
+        mock_analysis.return_value = AnalysisResult(
+            score=85,
+            extractedSkills=["Python", "FastAPI", "Docker"],
+            strongPoints=["Strong backend skills"],
+            gapsAndWeaknesses=["No cloud experience"],
+            atsChecklist=[
+                {"item": "Has contact info", "passed": True},
+                {"item": "Has skills section", "passed": True},
+            ],
         )
 
-        # Simulate frontend sending file + form data
         response = client.post(
-            "/upload/",
-            files={
-                "file": (
-                    "resume.txt",
-                    BytesIO(b"Python developer with 5 years experience"),
-                )
+            "/api/analyze-resume-text/",
+            json={"resumeText": "Python developer with 5 years experience"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "success"
+        analysis = data["analysis"]
+        assert analysis["score"] == 85
+        assert len(analysis["extractedSkills"]) == 3
+        assert len(analysis["atsChecklist"]) == 2
+
+    @patch("app.routes.call_openrouter_api")
+    def test_analyze_text_with_job_description(self, mock_analysis):
+        mock_analysis.return_value = AnalysisResult(
+            score=92,
+            extractedSkills=["Python", "FastAPI"],
+            strongPoints=[],
+            gapsAndWeaknesses=[],
+            atsChecklist=[],
+        )
+
+        response = client.post(
+            "/api/analyze-resume-text/",
+            json={
+                "resumeText": "Python developer",
+                "jobText": "Senior Python Engineer - FastAPI specialist",
             },
+        )
+
+        assert response.status_code == 200
+
+    def test_analyze_text_empty(self):
+        response = client.post(
+            "/api/analyze-resume-text/",
+            json={"resumeText": ""},
+        )
+        assert response.status_code == 422
+
+    @patch("app.routes.call_openrouter_api")
+    def test_analyze_error_handling(self, mock_analysis):
+        mock_analysis.side_effect = ValueError("AI service failed")
+
+        response = client.post(
+            "/api/analyze-resume-text/",
+            json={"resumeText": "Test resume"},
+        )
+        assert response.status_code == 502
+        data = response.json()
+        assert "detail" in data
+
+
+class TestFrontendMatchFlow:
+    @patch("app.routes.call_match_api")
+    def test_match_job_success(self, mock_match):
+        mock_match.return_value = JobMatchResult(
+            matchScore=88,
+            matchedSkills=["Python", "JavaScript", "React", "Docker"],
+            missingSkills=["Go", "Rust"],
+            recommendations="Consider learning Kubernetes for DevOps roles",
+        )
+
+        response = client.post(
+            "/api/match-job/",
+            json={
+                "resumeText": "Full stack developer with Python and React",
+                "jobText": "Full Stack Engineer with Go and Rust experience",
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["matchScore"] == 88
+        assert len(data["matchedSkills"]) == 4
+        assert len(data["missingSkills"]) == 2
+        assert isinstance(data["recommendations"], str)
+
+    def test_match_job_empty(self):
+        response = client.post(
+            "/api/match-job/",
+            json={"resumeText": "", "jobText": ""},
+        )
+        assert response.status_code == 422
+
+    def test_match_job_missing_resume(self):
+        response = client.post(
+            "/api/match-job/",
+            json={"resumeText": "", "jobText": "Senior dev"},
+        )
+        assert response.status_code == 422
+
+    @patch("app.routes.call_match_api")
+    def test_match_error_handling(self, mock_match):
+        mock_match.side_effect = ValueError("Match service failed")
+
+        response = client.post(
+            "/api/match-job/",
+            json={
+                "resumeText": "Test resume",
+                "jobText": "Test job",
+            },
+        )
+        assert response.status_code == 502
+
+
+class TestFrontendOptimizationFlow:
+    @patch("app.routes.call_optimization_api")
+    def test_optimization_success(self, mock_opt):
+        mock_opt.return_value = ProfileImprovementResult(
+            atsOptimizedSummary="Experienced product manager with strong analytical skills",
+            improvedBulletPoints=[
+                "Increased conversion by 4.2% through checkout redesign",
+                "Reduced time-to-market by 15%",
+            ],
+            learningPath=[
+                {"skill": "Kubernetes", "importance": "High", "resources": "Official docs"},
+                {"skill": "TypeScript", "importance": "Medium", "resources": "Online course"},
+            ],
+        )
+
+        response = client.post(
+            "/api/generate-profile-recommendations/",
+            json={"resumeText": "Product manager with 5 years experience"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["atsOptimizedSummary"] != ""
+        assert len(data["improvedBulletPoints"]) == 2
+        assert len(data["learningPath"]) == 2
+        assert "skill" in data["learningPath"][0]
+        assert "importance" in data["learningPath"][0]
+        assert "resources" in data["learningPath"][0]
+
+    def test_optimization_empty(self):
+        response = client.post(
+            "/api/generate-profile-recommendations/",
+            json={"resumeText": ""},
+        )
+        assert response.status_code == 422
+
+
+class TestFrontendFileUploadFlow:
+    @patch("app.routes.call_openrouter_api")
+    def test_file_upload_analyze_with_job_description(self, mock_analysis):
+        mock_analysis.return_value = AnalysisResult(
+            score=85,
+            extractedSkills=["Python", "FastAPI", "Docker"],
+            strongPoints=[],
+            gapsAndWeaknesses=[],
+            atsChecklist=[],
+        )
+
+        response = client.post(
+            "/api/analyze-resume/",
+            files={"file": ("resume.txt", BytesIO(b"Python developer with 5 years experience"))},
             data={
                 "job_description": "Senior Python Engineer - FastAPI specialist",
                 "model": "google/gemma-4-31b-it:free",
@@ -67,225 +206,99 @@ class TestFrontendUploadFlow:
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "success"
-        assert data["analysis"]["match_percentage"] == 85
-        assert len(data["analysis"]["found_skills"]) == 3
-        assert len(data["analysis"]["recommendations"]) == 2
+        assert data["analysis"]["score"] == 85
 
-    @patch("app.main.openrouter_client")
-    def test_upload_flow_without_job_description(self, mock_openrouter):
-        """Simulate: user uploads file without job description."""
-        mock_openrouter.return_value = json.dumps(
-            {
-                "match_percentage": None,  # None when no job description
-                "summary": "General resume review",
-                "found_skills": ["Python"],
-                "missing_skills": [],
-                "recommendations": [],
-            }
-        )
-
+    def test_file_upload_empty(self):
         response = client.post(
-            "/upload/",
-            files={"file": ("resume.txt", BytesIO(b"Python developer"))},
-            data={"job_description": "", "model": "google/gemma-4-31b-it:free"},
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["analysis"]["match_percentage"] is None
-
-    @patch("app.main.openrouter_client")
-    def test_upload_flow_model_passed_correctly(self, mock_openrouter):
-        """Simulate: verify selected model is sent to backend."""
-        mock_openrouter.return_value = json.dumps(
-            {
-                "match_percentage": 75,
-                "summary": "Candidate analysis",
-                "found_skills": [],
-                "missing_skills": [],
-                "recommendations": [],
-            }
-        )
-
-        selected_model = "openai/gpt-4"
-        response = client.post(
-            "/upload/",
-            files={"file": ("resume.txt", BytesIO(b"Test"))},
-            data={"job_description": "", "model": selected_model},
-        )
-
-        assert response.status_code == 200
-        # Verify the model was passed to openrouter_client
-        mock_openrouter.assert_called_once()
-
-    @patch("app.main.openrouter_client")
-    def test_frontend_error_handling_api_failure(self, mock_openrouter):
-        """Simulate: frontend error handling when API fails."""
-        mock_openrouter.side_effect = Exception("API connection failed")
-
-        response = client.post(
-            "/upload/",
-            files={"file": ("resume.txt", BytesIO(b"Test"))},
-            data={"job_description": "", "model": "google/gemma-4-31b-it:free"},
-        )
-
-        # Should return error status
-        assert response.status_code in [500, 502]
-        data = response.json()
-        assert "detail" in data
-
-    @patch("app.main.openrouter_client")
-    def test_frontend_error_handling_invalid_file(self, mock_openrouter):
-        """Simulate: frontend error when empty file is uploaded."""
-        response = client.post(
-            "/upload/",
+            "/api/analyze-resume/",
             files={"file": ("resume.txt", BytesIO(b""))},
-            data={"job_description": "", "model": "google/gemma-4-31b-it:free"},
         )
-
         assert response.status_code == 400
         data = response.json()
         assert "empty" in data["detail"].lower()
 
-    @patch("app.main.openrouter_client")
-    def test_frontend_response_display_all_fields(self, mock_openrouter):
-        """Simulate: frontend displays all response fields correctly."""
-        mock_response = {
-            "match_percentage": 92,
-            "summary": "Excellent match with strong technical skills",
-            "found_skills": ["Python", "JavaScript", "React", "Docker", "PostgreSQL"],
-            "missing_skills": ["Go", "Rust"],
-            "recommendations": [
-                "Consider learning Kubernetes for DevOps roles",
-                "Add more projects to GitHub",
-                "Get AWS certifications",
-            ],
-        }
-        mock_openrouter.return_value = json.dumps(mock_response)
-
-        response = client.post(
-            "/upload/",
-            files={"file": ("resume.txt", BytesIO(b"Full stack developer"))},
-            data={
-                "job_description": "Full Stack Engineer",
-                "model": "google/gemma-4-31b-it:free",
-            },
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        analysis = data["analysis"]
-
-        # Verify all fields are present for frontend to display
-        assert "match_percentage" in analysis
-        assert "summary" in analysis
-        assert "found_skills" in analysis
-        assert "missing_skills" in analysis
-        assert "recommendations" in analysis
-
-        # Verify data types for frontend rendering
-        assert isinstance(analysis["found_skills"], list)
-        assert isinstance(analysis["missing_skills"], list)
-        assert isinstance(analysis["recommendations"], list)
-        assert all(isinstance(skill, str) for skill in analysis["found_skills"])
-
-    def test_frontend_static_files_served(self):
-        """Verify static files are served for frontend."""
-        # Index HTML
-        response = client.get("/")
-        assert response.status_code == 200
-        assert "script.js" in response.text or "resume" in response.text.lower()
-
-        # Static files mount
-        response = client.get("/static/index.html")
-        assert (
-            response.status_code == 200 or response.status_code == 404
-        )  # Mount may vary
-
 
 class TestFrontendResponseHandling:
-    """Tests for frontend response parsing and display."""
-
-    @patch("app.main.openrouter_client")
-    def test_response_json_structure(self, mock_openrouter):
-        """Verify response structure matches frontend expectations."""
-        mock_openrouter.return_value = json.dumps(
-            {
-                "match_percentage": 88,
-                "summary": "Test summary",
-                "found_skills": ["Skill1"],
-                "missing_skills": ["Skill2"],
-                "recommendations": ["Rec1"],
-            }
+    @patch("app.routes.call_openrouter_api")
+    def test_analysis_response_structure(self, mock_analysis):
+        mock_analysis.return_value = AnalysisResult(
+            score=88,
+            extractedSkills=["Skill1", "Skill2"],
+            strongPoints=["Good structure"],
+            gapsAndWeaknesses=["No metrics"],
+            atsChecklist=[
+                {"item": "Has contact", "passed": True},
+                {"item": "Has achievements", "passed": False},
+            ],
         )
 
         response = client.post(
-            "/upload/",
-            files={"file": ("resume.txt", BytesIO(b"Test"))},
-            data={"job_description": "", "model": "google/gemma-4-31b-it:free"},
+            "/api/analyze-resume-text/",
+            json={"resumeText": "Test resume content for analysis"},
         )
 
         data = response.json()
-        # Frontend expects these top-level fields
         assert "status" in data
         assert "filename" in data
         assert "analysis" in data
 
-        # Frontend expects these analysis fields
         analysis = data["analysis"]
         required_fields = [
-            "match_percentage",
-            "summary",
-            "found_skills",
-            "missing_skills",
-            "recommendations",
+            "score",
+            "extractedSkills",
+            "strongPoints",
+            "gapsAndWeaknesses",
+            "atsChecklist",
         ]
         for field in required_fields:
             assert field in analysis, f"Missing field: {field}"
 
-    @patch("app.main.openrouter_client")
-    def test_response_with_null_match_percentage(self, mock_openrouter):
-        """Frontend should handle null match_percentage."""
-        mock_openrouter.return_value = json.dumps(
-            {
-                "match_percentage": None,
-                "summary": "General review",
-                "found_skills": [],
-                "missing_skills": [],
-                "recommendations": [],
-            }
+        assert isinstance(analysis["extractedSkills"], list)
+        assert isinstance(analysis["atsChecklist"], list)
+        assert all(isinstance(skill, str) for skill in analysis["extractedSkills"])
+        for item in analysis["atsChecklist"]:
+            assert "item" in item
+            assert "passed" in item
+
+    @patch("app.routes.call_match_api")
+    def test_match_response_structure(self, mock_match):
+        mock_match.return_value = JobMatchResult(
+            matchScore=75,
+            matchedSkills=["Python"],
+            missingSkills=["Go"],
+            recommendations="Learn Go",
         )
 
         response = client.post(
-            "/upload/",
-            files={"file": ("resume.txt", BytesIO(b"Test"))},
-            data={"job_description": "", "model": "google/gemma-4-31b-it:free"},
+            "/api/match-job/",
+            json={
+                "resumeText": "Python dev",
+                "jobText": "Go dev needed",
+            },
         )
 
         data = response.json()
-        assert data["analysis"]["match_percentage"] is None
+        assert "matchScore" in data
+        assert "matchedSkills" in data
+        assert "missingSkills" in data
+        assert "recommendations" in data
 
-    @patch("app.main.openrouter_client")
-    def test_response_with_empty_lists(self, mock_openrouter):
-        """Frontend should handle empty skill/recommendation lists."""
-        mock_openrouter.return_value = json.dumps(
-            {
-                "match_percentage": 50,
-                "summary": "Basic candidate",
-                "found_skills": [],
-                "missing_skills": [],
-                "recommendations": [],
-            }
+    @patch("app.routes.call_optimization_api")
+    def test_optimization_response_structure(self, mock_opt):
+        mock_opt.return_value = ProfileImprovementResult(
+            atsOptimizedSummary="Test summary",
+            improvedBulletPoints=["Point 1"],
+            learningPath=[{"skill": "S1", "importance": "High", "resources": "R1"}],
         )
 
         response = client.post(
-            "/upload/",
-            files={"file": ("resume.txt", BytesIO(b"Test"))},
-            data={"job_description": "", "model": "google/gemma-4-31b-it:free"},
+            "/api/generate-profile-recommendations/",
+            json={"resumeText": "Test resume"},
         )
 
         data = response.json()
-        analysis = data["analysis"]
-        assert isinstance(analysis["found_skills"], list)
-        assert isinstance(analysis["missing_skills"], list)
-        assert isinstance(analysis["recommendations"], list)
+        assert "atsOptimizedSummary" in data
+        assert "improvedBulletPoints" in data
+        assert "learningPath" in data
+        assert isinstance(data["improvedBulletPoints"], list)
+        assert isinstance(data["learningPath"], list)

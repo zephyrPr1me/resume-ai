@@ -1,29 +1,26 @@
-import json
 from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
 
+class ATSChecklistItem(BaseModel):
+    item: str
+    passed: bool
+
+
 class AnalysisResult(BaseModel):
-    match_percentage: Optional[int] = Field(
-        None,
-        ge=0,
-        le=100,
-        description="Percentage of how well the resume matches the job requirements",
+    score: int = Field(..., ge=0, le=100, description="Overall resume quality score")
+    extractedSkills: List[str] = Field(
+        default_factory=list, description="Skills extracted from the resume"
     )
-    summary: str = Field(
-        ..., description="Overall conclusion about the candidate in 2–3 sentences"
+    strongPoints: List[str] = Field(
+        default_factory=list, description="What makes the resume stand out"
     )
-    found_skills: List[str] = Field(
-        default_factory=list, description="Skills that were successfully identified"
+    gapsAndWeaknesses: List[str] = Field(
+        default_factory=list, description="Areas for improvement"
     )
-    missing_skills: List[str] = Field(
-        default_factory=list,
-        description="Skills or experience missing for this position",
-    )
-    recommendations: List[str] = Field(
-        default_factory=list,
-        description="Specific steps: what to add or change in the resume",
+    atsChecklist: List[ATSChecklistItem] = Field(
+        default_factory=list, description="ATS compatibility checklist"
     )
 
 
@@ -31,3 +28,22 @@ class AnalysisResponse(BaseModel):
     status: str = "success"
     filename: str
     analysis: AnalysisResult
+
+
+class JobMatchResult(BaseModel):
+    matchScore: int = Field(..., ge=0, le=100)
+    matchedSkills: List[str] = Field(default_factory=list)
+    missingSkills: List[str] = Field(default_factory=list)
+    recommendations: str = ""
+
+
+class LearningPathItem(BaseModel):
+    skill: str
+    importance: str
+    resources: str
+
+
+class ProfileImprovementResult(BaseModel):
+    atsOptimizedSummary: str = ""
+    improvedBulletPoints: List[str] = Field(default_factory=list)
+    learningPath: List[LearningPathItem] = Field(default_factory=list)

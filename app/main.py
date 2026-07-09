@@ -6,6 +6,8 @@ from app.routes import router
 from app.schemas import AnalysisResult  # noqa: F401
 from fastapi.middleware.cors import CORSMiddleware
 
+
+
 app = FastAPI()
 
 # Настройка CORS
@@ -22,8 +24,4 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-app = FastAPI()
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
-app.mount("/assets", StaticFiles(directory="assets"), name="assets")
-app.include_router(router)
+app.include_router(router, prefix="/api")
