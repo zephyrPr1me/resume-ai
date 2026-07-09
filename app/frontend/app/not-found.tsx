@@ -6,11 +6,9 @@ import { FileQuestion, Home, ArrowLeft } from "lucide-react";
 export default function NotFound() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
-      {/* Декоративный фоновый градиент (blur blob) */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl pointer-events-none" />
 
       <div className="max-w-md w-full text-center relative z-10">
-        {/* Контейнер для иконки с анимацией */}
         <div className="inline-flex items-center justify-center w-20 h-20 bg-muted/50 border border-border rounded-2xl mb-6 shadow-sm animate-[pulse_4s_ease-in-out_infinite]">
           <FileQuestion className="w-10 h-10 text-primary" />
         </div>
@@ -27,8 +25,6 @@ export default function NotFound() {
         <p className="text-muted-foreground mb-8 max-w-sm mx-auto leading-relaxed">
           К сожалению, страница, которую вы ищете, не существует, была удалена или перемещена.
         </p>
-
-        {/* Группа кнопок */}
         <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
           <Link
             href="/"

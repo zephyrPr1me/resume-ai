@@ -107,15 +107,6 @@ export const metadata: Metadata = {
     ],
   },
 
-  twitter: {
-    card: "summary_large_image",
-    site: "@resume_ai",
-    creator: "@resume_ai",
-    title: "Resume AI — Умный анализ резюме",
-    description: "Анализируйте и улучшайте резюме с помощью AI",
-    images: ["/twitter-image.png"],
-  },
-
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -126,25 +117,6 @@ export const metadata: Metadata = {
     telephone: false,
     email: false,
     address: false,
-  },
-
-  icons: {
-    icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/favicon-16x16.png", type: "image/png", sizes: "16x16" },
-      { url: "/favicon-32x32.png", type: "image/png", sizes: "32x32" },
-      { url: "/favicon-96x96.png", type: "image/png", sizes: "96x96" },
-    ],
-    apple: [
-      { url: "/apple-touch-icon.png", sizes: "180x180" },
-    ],
-    other: [
-      {
-        rel: "mask-icon",
-        url: "/safari-pinned-tab.svg",
-        color: "#E879F9",
-      },
-    ],
   },
 
   manifest: "/site.webmanifest",
@@ -172,7 +144,6 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        {/* Anti-flicker script для темной темы */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -189,8 +160,6 @@ export default function RootLayout({
             `,
           }}
         />
-
-        {/* Preconnect для внешних ресурсов */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
 
@@ -233,7 +202,6 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <ErrorBoundary>
-            {/* Skip Navigation Link для Accessibility */}
             <a
               href="#main-content"
               className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md"

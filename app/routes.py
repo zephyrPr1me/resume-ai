@@ -17,12 +17,7 @@ router = APIRouter()
 
 @router.get("/health")
 async def health_check():
-    return {
-        "status": "healthy",
-        "service": "resume-ai-insight",
-        "version": "0.1.0",
-    }
-
+    return JSONResponse("status: OK")
 
 @router.post("/analyze-resume/", response_model=AnalysisResponse)
 async def analyze_resume(
@@ -125,7 +120,9 @@ async def match_job(body: dict):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.post("/generate-profile-recommendations/", response_model=ProfileImprovementResult)
+@router.post(
+    "/generate-profile-recommendations/", response_model=ProfileImprovementResult
+)
 async def generate_profile_recommendations(body: dict):
     """Generate profile optimization recommendations from resume text."""
     resume_text = body.get("resumeText", "")

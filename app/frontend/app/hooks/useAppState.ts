@@ -7,41 +7,46 @@ import type { ResumeAnalysis, JobMatchResult, ProfileImprovementResult } from ".
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 const MAX_RESUME_CHARS = 15000;
-const MAX_JOB_CHARS = 5000;
-
-const getInitialTheme = (): boolean => {
-  if (typeof window === 'undefined') return true;
-  const saved = localStorage.getItem('theme');
-  return saved !== null ? saved === 'dark' : true;
-};
+export const MAX_JOB_CHARS = 5000;
 
 export function useAppState() {
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(getInitialTheme);
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
+  const [themeReady, setThemeReady] = useState<boolean>(false);
+
   const [resumeText, setResumeText] = useState<string>("");
   const [jobText, setJobText] = useState<string>("");
-  const [activeTab, setActiveTab] = useState<"audit" | "matching" | "optimization">("audit");
-
+  const [activeTab, setActiveTab] = useState<"analysis" | "optimization">("analysis");
+  const [selectedModel, setSelectedModel] = useState<string>("");
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [isMatching, setIsMatching] = useState<boolean>(false);
-
   const [analysisResult, setAnalysisResult] = useState<ResumeAnalysis | null>(null);
   const [matchResult, setMatchResult] = useState<JobMatchResult | null>(null);
   const [optimizationResult, setOptimizationResult] = useState<ProfileImprovementResult | null>(null);
-
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [demoMode, setDemoMode] = useState<boolean>(false);
-
-  // AbortController refs
   const analyzeAbortController = useRef<AbortController | null>(null);
   const matchAbortController = useRef<AbortController | null>(null);
-
-  // Sync theme with localStorage and DOM
   useEffect(() => {
+    const saved = localStorage.getItem('theme');
+    const initial = saved !== null ? saved === 'dark' : true;
+    setIsDarkMode(initial);
+    setThemeReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!themeReady) return;
     localStorage.setItem("theme", isDarkMode ? "dark" : "light");
     document.documentElement.classList.toggle('dark', isDarkMode);
-  }, [isDarkMode]);
+  }, [isDarkMode, themeReady]);
 
-  const toggleTheme = () => setIsDarkMode((prev) => !prev);
+  useEffect(() => {
+    return () => {
+      analyzeAbortController.current?.abort();
+      matchAbortController.current?.abort();
+    };
+  }, []);
+
+  const toggleTheme = useCallback(() => setIsDarkMode((prev) => !prev), []);
 
   // Validation helper
   const validateText = (text: string, maxLength: number, fieldName: string): string | null => {
@@ -66,17 +71,18 @@ export function useAppState() {
     setDemoMode(false);
 
     try {
+      // Fix #1: model is now included in every request body
       const [analysisResponse, optResponse] = await Promise.allSettled([
         fetch(`${API_URL}/api/analyze-resume-text/`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ resumeText }),
+          body: JSON.stringify({ resumeText, model: selectedModel || undefined }),
           signal: analyzeAbortController.current.signal,
         }),
         fetch(`${API_URL}/api/generate-profile-recommendations/`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ resumeText }),
+          body: JSON.stringify({ resumeText, model: selectedModel || undefined }),
           signal: analyzeAbortController.current.signal,
         }),
       ]);
@@ -125,7 +131,7 @@ export function useAppState() {
       setIsAnalyzing(false);
       analyzeAbortController.current = null;
     }
-  }, [resumeText]);
+  }, [resumeText, selectedModel]);
 
   // 2. Match resume against job
   const handleMatchJob = useCallback(async () => {
@@ -144,10 +150,11 @@ export function useAppState() {
     setDemoMode(false);
 
     try {
+      // Fix #1: model is now included in every request body
       const response = await fetch(`${API_URL}/api/match-job/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resumeText, jobText }),
+        body: JSON.stringify({ resumeText, jobText, model: selectedModel || undefined }),
         signal: matchAbortController.current.signal,
       });
 
@@ -166,7 +173,7 @@ export function useAppState() {
       setIsMatching(false);
       matchAbortController.current = null;
     }
-  }, [resumeText, jobText]);
+  }, [resumeText, jobText, selectedModel]);
 
   // 3. Cancel ongoing match
   const cancelMatch = useCallback(() => {
@@ -177,8 +184,7 @@ export function useAppState() {
     }
   }, []);
 
-  // Load sample job text
-  const loadSampleJob = () => setJobText(sampleJobs.developer);
+  const loadSampleJob = useCallback(() => setJobText(sampleJobs.developer), []);
 
   return {
     // Theme
@@ -187,6 +193,9 @@ export function useAppState() {
     // Tab state
     activeTab,
     setActiveTab,
+    // Model selection
+    selectedModel,
+    setSelectedModel,
     // Resume / job text
     resumeText,
     setResumeText,
@@ -201,13 +210,12 @@ export function useAppState() {
     optimizationResult,
     // Error & demo mode
     errorMessage,
+    setErrorMessage,
     demoMode,
     // Actions
     handleAnalyzeResume,
     handleMatchJob,
     cancelMatch,
     loadSampleJob,
-    // Constants (exported for consumers)
-    MAX_JOB_CHARS,
   };
 }

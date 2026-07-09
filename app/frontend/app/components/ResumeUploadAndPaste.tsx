@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import { Upload, ArrowRight, Clipboard, FileCode } from "lucide-react";
+import { ChevronDown, Check, Cpu } from "lucide-react";
 
 interface ResumeUploadAndPasteProps {
   resumeText: string;
@@ -113,17 +114,17 @@ export default function ResumeUploadAndPaste({
       )}
 
       {/* Grid of Paste Textarea and Drag & Drop file */}
-      <div className="grid grid-cols-3 gap-6" id="resume-workspace-layout">
+      <div className="grid grid-cols-3 gap-6 items-stretch" id="resume-workspace-layout">
         {/* Paste Resume Column */}
-        <div className="col-span-2 space-y-2" id="resume-text-input-column">
+        <div className="col-span-2 flex flex-col" id="resume-text-input-column">
           <label className="text-xs font-black uppercase tracking-[0.15em] text-muted-foreground flex items-center gap-1.5" htmlFor="resume-textarea" id="textarea-label">
             <Clipboard className="w-3.5 h-3.5 text-primary" id="clipboard-icon" />
             Вставьте текстовое содержимое резюме
           </label>
-          <div className="relative rounded-3xl overflow-hidden" id="textarea-container">
+          <div className="relative rounded-3xl overflow-hidden flex-1" id="textarea-container">
             <textarea
               id="resume-textarea"
-              className="w-full h-96 p-4 text-sm font-mono focus:outline-none transition-all duration-300 border focus:ring-2 focus:ring-primary/30 focus:border-primary/50 resize-none bg-muted-card border-border text-foreground"
+              className="w-full h-full min-h-[384px] p-4 text-sm font-mono focus:outline-none transition-all duration-300 border focus:ring-2 focus:ring-primary/30 focus:border-primary/50 resize-none bg-muted-card border-border text-foreground"
               placeholder="Скопируйте сюда контакты, опыт работы, навыки и образование..."
               value={resumeText}
               onChange={(e) => setResumeText(e.target.value)}
@@ -136,67 +137,53 @@ export default function ResumeUploadAndPaste({
           </div>
         </div>
 
-        {/* Drag and Drop Box & Quick Info */}
-        <div className="space-y-4 flex flex-col justify-between" id="resume-drag-drop-column">
-          <div className="space-y-2" id="drag-drop-sub-section">
-            <span className="text-xs font-black uppercase tracking-[0.15em] text-muted-foreground flex items-center gap-1.5" id="file-label">
-              <Upload className="w-3.5 h-3.5 text-primary" id="upload-icon" />
-              Или загрузите файл
-            </span>
-            <div
-              onDragEnter={handleDrag}
-              onDragOver={handleDrag}
-              onDragLeave={handleDrag}
-              onDrop={handleDrop}
-              onClick={triggerFileInput}
-              className={`border-2 border-dashed rounded-3xl p-6 text-center cursor-pointer transition-all duration-300 h-56 flex flex-col items-center justify-center gap-3 ${
-                dragActive
-                  ? "border-primary bg-primary/10 text-primary scale-95"
-                  : "border-border hover:border-primary/60 hover:bg-card-hover/20 bg-muted-card/50 text-muted-foreground"
-              }`}
-              id="file-drop-zone"
-            >
-              <Upload className={`w-10 h-10 ${dragActive ? 'text-primary' : 'text-muted-foreground'}`} id="drop-upload-icon" />
-              <p className="text-xs text-foreground" id="drop-text">
-                {dragActive ? 'Отпустите файл для загрузки' : 'Перетащите .txt файл сюда или кликните'}
-              </p>
-              <span className="text-[10px] opacity-60 text-muted-foreground" id="drop-hint">
-                Поддерживает .txt, .docx, .pdf
-              </span>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".txt,.docx,.pdf"
-                onChange={handleFileInputChange}
-                className="hidden"
-                id="file-input-hidden"
-              />
-            </div>
-          </div>
+        {/* Drag and Drop Box */}
+        <div className="flex flex-col" id="resume-drag-drop-column">
+          {/* Label */}
+          <span className="text-xs font-black uppercase tracking-[0.15em] text-muted-foreground flex items-center gap-1.5 mb-2" id="file-label">
+            <Upload className="w-3.5 h-3.5 text-primary" id="upload-icon" />
+            Или загрузите файл
+          </span>
 
-          {/* Analyze Button */}
-          <button
-            onClick={onAnalyze}
-            disabled={loading || !resumeText.trim()}
-            className={`w-full py-3.5 rounded-3xl font-bold text-sm tracking-wide transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer ${
-              loading || !resumeText.trim()
-                ? "bg-card-hover/50 text-muted-foreground cursor-not-allowed border border-border"
-                : "bg-primary text-primary-foreground hover:scale-[1.02] hover:shadow-lg hover:shadow-primary/20 active:scale-[0.98]"
+          {/* Drop zone — grows to match textarea height */}
+          <div
+            onDragEnter={handleDrag}
+            onDragOver={handleDrag}
+            onDragLeave={handleDrag}
+            onDrop={handleDrop}
+            onClick={triggerFileInput}
+            className={`flex-1 border-2 border-dashed rounded-3xl text-center cursor-pointer transition-all duration-300 flex flex-col items-center justify-center gap-4 ${
+              dragActive
+                ? "border-primary bg-primary/10 text-primary scale-[0.98]"
+                : "border-border hover:border-primary/60 hover:bg-card-hover/20 bg-muted-card/50 text-muted-foreground"
             }`}
-            id="analyze-button"
+            id="file-drop-zone"
           >
-            {loading ? (
-              <>
-                <span className="inline-block animate-spin">⏳</span>
-                Анализируем...
-              </>
-            ) : (
-              <>
-                Запустить анализ
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </button>
+            <div className={`p-4 rounded-2xl transition-all duration-300 ${
+              dragActive ? 'bg-primary/20' : 'bg-card-hover/60'
+            }`}>
+              <Upload className={`w-8 h-8 ${dragActive ? 'text-primary' : 'text-muted-foreground'}`} id="drop-upload-icon" />
+            </div>
+            <div className="space-y-1 px-4">
+              <p className="text-sm font-semibold text-foreground" id="drop-text">
+                {dragActive ? 'Отпустите файл' : 'Перетащите файл сюда'}
+              </p>
+              <p className="text-xs text-muted-foreground" id="drop-hint-action">
+                или кликните для выбора
+              </p>
+              <p className="text-[10px] font-black tracking-[0.1em] uppercase text-muted-foreground/60 mt-2" id="drop-hint">
+                .txt · .docx · .pdf
+              </p>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".txt,.docx,.pdf"
+              onChange={handleFileInputChange}
+              className="hidden"
+              id="file-input-hidden"
+            />
+          </div>
         </div>
       </div>
     </div>

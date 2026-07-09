@@ -29,3 +29,9 @@ export interface JobMatchResult {
   missingSkills: string[];
   recommendations: string;
 }
+
+export interface ModelInfo {
+  id: string;
+  name: string;
+  context_length: number;
+}
