@@ -1,0 +1,313 @@
+@import "tailwindcss";
+
+@theme {
+  /* === Fonts === */
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Plus Jakarta Sans", "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* === Base palette === */
+  --color-neon-lime: #CCFF00;
+  --color-neon-emerald: #00FF85;
+  --color-neon-rose: #FF3D00;
+  --color-neon-amber: #FFD600;
+  --color-neon-purple: #A855F7;
+
+  /* === Semantic: Dark (default) === */
+  --color-background: #090D0B;
+  --color-foreground: #ECF3F0;
+  --color-card: #111815;
+  --color-card-hover: #1B2621;
+  --color-muted-card: #060A08;
+  --color-border: #22302A;
+  --color-primary: #CCFF00;
+  --color-primary-foreground: #000000;
+  --color-destructive: #FF3D00;
+  --color-muted-foreground: #8A9A93;
+
+  /* === Accents (hex + alpha for performance) === */
+  --color-accent-emerald: #00FF85;
+  --color-accent-emerald-bg: #00FF8514;
+  --color-accent-emerald-border: #00FF8533;
+
+  --color-accent-rose: #FF3D00;
+  --color-accent-rose-bg: #FF3D0014;
+  --color-accent-rose-border: #FF3D0033;
+
+  --color-accent-amber: #FFD600;
+  --color-accent-amber-bg: #FFD60014;
+  --color-accent-amber-border: #FFD60033;
+
+  --color-accent-fuchsia: #E879F9;
+  --color-accent-fuchsia-bg: #E879F914;
+
+  /* === Spacing === */
+  --spacing-4-5: 1.125rem;
+  --spacing-18: 4.5rem;
+  --spacing-22: 5.5rem;
+
+  /* === Radius === */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 2rem;
+}
+
+/* === Light theme overrides ONLY === */
+html:not(.dark) {
+  --color-background: #FAF9F6;
+  --color-foreground: #141C18;
+  --color-card: #FFFFFF;
+  --color-card-hover: #F4F2EB;
+  --color-muted-card: #F5F4F0;
+  --color-border: #E5E2D9;
+  --color-primary: #6B8F00;
+  --color-primary-foreground: #ffffff;
+  --color-destructive: #D32F2F;
+  --color-muted-foreground: #66736C;
+
+  --color-accent-emerald: #05A65A;
+  --color-accent-emerald-bg: #05A65A14;
+  --color-accent-emerald-border: #05A65A33;
+
+  --color-accent-rose: #D32F2F;
+  --color-accent-rose-bg: #D32F2F14;
+  --color-accent-rose-border: #D32F2F33;
+
+  --color-accent-amber: #B27B00;
+  --color-accent-amber-bg: #B27B0014;
+  --color-accent-amber-border: #B27B0033;
+
+  --color-accent-fuchsia: #B83FB9;
+  --color-accent-fuchsia-bg: #B83FB914;
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html:not(.dark) {
+    color-scheme: light;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    line-height: 1.6;
+    transition: background-color 0.3s ease-out, color 0.3s ease-out;
+  }
+
+  /* === Typography === */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  /* === Selection === */
+  ::selection {
+    background: var(--color-primary);
+    color: var(--color-primary-foreground);
+  }
+
+  /* === Scrollbar === */
+  html {
+    scrollbar-color: var(--color-border) transparent;
+    scrollbar-width: thin;
+  }
+
+  /* === Links === */
+  a {
+    color: var(--color-primary);
+    text-decoration: none;
+    transition: opacity 0.2s ease;
+  }
+
+  a:hover {
+    opacity: 0.8;
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+  }
+
+  /* === Lists === */
+  ul, ol {
+    padding-left: 1.5rem;
+  }
+
+  li {
+    margin-bottom: 0.25rem;
+  }
+
+  /* === Code === */
+  code, kbd, samp {
+    font-family: var(--font-mono);
+    font-size: 0.875em;
+    background: var(--color-muted-card);
+    padding: 0.125rem 0.375rem;
+    border-radius: var(--radius-sm);
+  }
+
+  pre {
+    font-family: var(--font-mono);
+    background: var(--color-muted-card);
+    padding: 1rem;
+    border-radius: var(--radius-lg);
+    overflow-x: auto;
+    font-size: 0.875rem;
+    line-height: 1.6;
+  }
+
+  pre code {
+    background: transparent;
+    padding: 0;
+    font-size: inherit;
+  }
+
+  /* === Form elements === */
+  input, textarea, select {
+    font-family: inherit;
+    font-size: inherit;
+    color: inherit;
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 0.5rem 0.75rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  input:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgb(from var(--color-primary) r g b / 15%);
+  }
+
+  input::placeholder, textarea::placeholder {
+    color: var(--color-muted-foreground);
+  }
+
+  button {
+    font-family: inherit;
+    cursor: pointer;
+    border: none;
+    background: none;
+    color: inherit;
+  }
+
+  /* === Tables === */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+
+  th, td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  th {
+    font-weight: 600;
+    color: var(--color-muted-foreground);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* === Blockquote === */
+  blockquote {
+    border-left: 3px solid var(--color-primary);
+    padding-left: 1rem;
+    margin-left: 0;
+    font-style: italic;
+    color: var(--color-muted-foreground);
+  }
+
+  /* === Horizontal rule === */
+  hr {
+    border: none;
+    height: 1px;
+    background: var(--color-border);
+    margin: 1.5rem 0;
+  }
+
+  /* === Media === */
+  img, picture, video, canvas, svg {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* === Focus === */
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  /* === Details / Summary === */
+  details {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 1rem;
+  }
+
+  summary {
+    cursor: pointer;
+    font-weight: 600;
+    list-style: none;
+  }
+
+  summary::-webkit-details-marker {
+    display: none;
+  }
+
+  /* === Mark === */
+  mark {
+    background: var(--color-accent-amber-bg);
+    color: inherit;
+    padding: 0.125rem 0.25rem;
+    border-radius: var(--radius-sm);
+  }
+
+  /* === Misc === */
+  small {
+    font-size: 0.875rem;
+    color: var(--color-muted-foreground);
+  }
+
+  strong, b {
+    font-weight: 700;
+  }
+
+  abbr[title] {
+    text-decoration: underline dotted;
+    cursor: help;
+  }
+
+  dt {
+    font-weight: 600;
+    margin-top: 0.5rem;
+  }
+
+  dd {
+    margin-left: 0;
+    color: var(--color-muted-foreground);
+  }
+}

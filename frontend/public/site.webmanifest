@@ -1,0 +1,10 @@
+{
+  "name": "Resume AI",
+  "short_name": "Resume AI",
+  "description": "Умный анализ резюме с помощью AI",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050A09",
+  "theme_color": "#E879F9",
+  "orientation": "portrait"
+}
