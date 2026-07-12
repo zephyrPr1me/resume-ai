@@ -13,6 +13,9 @@ dependencies = [
     "pytest>=9.0.3",
     "ruff>=0.15.12",
     "httpx>=0.24.0",
+    "gunicorn>=22.0.0",
+    "pytest-asyncio>=1.4.0",
+    "respx>=0.23.1",
 ]
 
 [dependency-groups]

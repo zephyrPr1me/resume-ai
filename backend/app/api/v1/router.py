@@ -1,9 +1,9 @@
 import asyncio
-import httpx
+
 from io import BytesIO
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
-from fastapi.responses import JSONResponse
+
 
 from app.config import logger
 from app.ai import call_openrouter_api, call_match_api, call_optimization_api
@@ -15,9 +15,6 @@ UPLOAD_TIMEOUT = 180
 router = APIRouter()
 
 
-@router.get("/health")
-async def health_check():
-    return JSONResponse("status: OK")
 
 @router.post("/analyze-resume/", response_model=AnalysisResponse)
 async def analyze_resume(
@@ -140,30 +137,4 @@ async def generate_profile_recommendations(body: dict):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.get("/models-free/")
-async def get_free_openrouter_models():
-    url = "https://openrouter.ai/api/v1/models"
-    async with httpx.AsyncClient() as client:
-        response = await client.get(url)
-        response.raise_for_status()
-        data = response.json().get("data", [])
 
-        free_models = []
-        for model in data:
-            pricing = model.get("pricing", {})
-            try:
-                prompt_price = float(pricing.get("prompt", 1))
-                completion_price = float(pricing.get("completion", 1))
-            except (ValueError, TypeError):
-                continue
-
-            if prompt_price == 0.0 and completion_price == 0.0:
-                free_models.append(
-                    {
-                        "id": model.get("id"),
-                        "name": model.get("name"),
-                        "context_length": model.get("context_length"),
-                    }
-                )
-
-        return free_models

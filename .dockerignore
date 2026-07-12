@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Виртуальные окружения
+.venv
+venv/
+
+# Секреты и конфиги
+.env
+.env.*
+!.env.example
+
+# IDE и Git
+.vscode/
+.idea/
+.git/
+.gitignore
+
+# Логи и тесты
+*.log
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Docker
+Dockerfile
+.dockerignore
